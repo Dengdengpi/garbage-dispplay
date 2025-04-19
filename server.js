@@ -1,39 +1,23 @@
-// server.js  (CommonJS, no "type":"module" needed)
+/* server.js – works on Render’s read‑only FS by keeping images in RAM */
 const express = require("express");
-const bodyParser = require("body-parser");
-const fs = require("fs");
-const path = require("path");
+const body = require("body-parser");
 
 const app = express();
-const PORT = 3000;
-const records = [];                         // RAM list
+const PORT = process.env.PORT || 3000;
+const records = [];                // {label, b64, ts}
 
-/* Body limit 15 MB just in case */
-app.use(bodyParser.json({ limit: "15mb" }));
-
-/* CORS so you can open from phone by IP */
-app.use((_, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  next();
-});
-
-/* Static front‑end */
+/* json up to 8 MB */
+app.use(body.json({ limit: "8mb" }));
 app.use(express.static("public"));
 
-/* Upload endpoint */
 app.post("/upload", (req, res) => {
   const { label, image } = req.body;
-  if (!label || !image) return res.status(400).send("Bad payload");
-
-  const fname = `images/${Date.now()}.jpg`;
-  fs.writeFileSync(path.join(__dirname, "public", fname), Buffer.from(image, "base64"));
-  const rec = { label, file: fname, time: new Date().toLocaleString() };
-  records.unshift(rec);
-  console.log("✅ Saved:", rec.label);
+  if (!label || !image) return res.status(400).send("bad");
+  records.unshift({ label, b64: image, ts: Date.now() });
+  console.log("✅", label);
   res.sendStatus(200);
 });
 
-/* JSON feed */
-app.get("/api/records", (_, res) => res.json(records));
+app.get("/api/records", (_req, res) => res.json(records));
 
-app.listen(PORT, () => console.log(`🌍  http://localhost:${PORT}`));
+app.listen(PORT, () => console.log("✅ Server on :" + PORT));

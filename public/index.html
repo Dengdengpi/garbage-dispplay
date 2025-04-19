@@ -1,35 +1,27 @@
-<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Trash Feed</title>
-<style>
-body{font-family:sans-serif;background:#fafafa;margin:0;padding:1rem}
-.card{background:#fff;border-radius:6px;box-shadow:0 1px 4px #bbb;margin:8px;padding:8px}
-img{max-width:100%;height:auto;border:1px solid #ddd}
-small{color:#666}
-</style>
-</head>
-<body>
-<h2>Trash Classification Feed</h2>
-<div id="feed">Waiting for uploads…</div>
-<script>
-async function refresh(){
-  try{
-    const data = await fetch('/api/records').then(r=>r.json());
-    const feed=document.getElementById('feed');
-    if(!data.length){ feed.innerHTML='No records yet.'; return; }
-    feed.innerHTML='';
-    data.forEach(r=>{
-      const div=document.createElement('div');
-      div.className='card';
-      div.innerHTML=`<b>${r.label}</b><br><small>${r.time}</small><br>
-        <img src='/${r.file}?v=${Date.now()}'/>`;
-      feed.appendChild(div);
-    });
-  }catch(e){console.error(e);}
-}
-refresh(); setInterval(refresh,4000);
-</script>
-</body>
-</html>
+<!doctype html><html><head>
+    <meta charset="utf-8"><title>Trash Feed</title>
+    <style>
+    body{font-family:sans-serif;background:#fafafa;margin:0;padding:1rem}
+    .card{background:#fff;margin:8px 0;padding:8px;border-radius:6px;
+     box-shadow:0 1px 4px #bbb}
+    img{max-width:100%;border:1px solid #ddd}
+    small{color:#555}
+    </style></head><body>
+    <h2>Trash Classification Feed</h2>
+    <div id="feed">No data yet…</div>
+    <script>
+    async function load(){
+      const res=await fetch('/api/records'); const data=await res.json();
+      const feed=document.getElementById('feed'); feed.innerHTML='';
+      if(!data.length){feed.textContent='Waiting for uploads…'; return;}
+      data.forEach(r=>{
+        const d=document.createElement('div'); d.className='card';
+        const time=new Date(r.ts).toLocaleString();
+        d.innerHTML=`<b>${r.label}</b><br><small>${time}</small><br>
+          <img src="data:image/jpeg;base64,${r.b64}">`;
+        feed.appendChild(d);
+      });
+    }
+    load(); setInterval(load,5000);
+    </script></body></html>
+    
