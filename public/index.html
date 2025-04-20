@@ -1,27 +1,65 @@
-<!doctype html><html><head>
-    <meta charset="utf-8"><title>Trash Feed</title>
-    <style>
-    body{font-family:sans-serif;background:#fafafa;margin:0;padding:1rem}
-    .card{background:#fff;margin:8px 0;padding:8px;border-radius:6px;
-     box-shadow:0 1px 4px #bbb}
-    img{max-width:100%;border:1px solid #ddd}
-    small{color:#555}
-    </style></head><body>
-    <h2>Trash Classification Feed</h2>
-    <div id="feed">No data yet…</div>
-    <script>
-    async function load(){
-      const res=await fetch('/api/records'); const data=await res.json();
-      const feed=document.getElementById('feed'); feed.innerHTML='';
-      if(!data.length){feed.textContent='Waiting for uploads…'; return;}
-      data.forEach(r=>{
-        const d=document.createElement('div'); d.className='card';
-        const time=new Date(r.ts).toLocaleString();
-        d.innerHTML=`<b>${r.label}</b><br><small>${time}</small><br>
-          <img src="data:image/jpeg;base64,${r.b64}">`;
-        feed.appendChild(d);
-      });
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Smart‑Bin Feed</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root{
+      --bg:#f4f7fa; --card:#ffffff; --text:#222; --muted:#555;
+      --border:#e0e6ed; --shadow:0 2px 8px rgba(0,0,0,.06);
     }
-    load(); setInterval(load,5000);
-    </script></body></html>
-    
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui, sans-serif;background:var(--bg);padding:1rem}
+    h1{font-size:1.6rem;margin-bottom:1rem;color:var(--text)}
+    #feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:10px;
+          box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
+    .card img{width:100%;height:auto;display:block}
+    .card-content{padding:0.75rem 1rem}
+    .label{font-weight:600;margin-bottom:0.25rem;color:var(--text)}
+    .explain{font-size:0.9rem;color:var(--muted);margin-bottom:0.5rem;line-height:1.3}
+    .time{font-size:0.75rem;color:var(--muted)}
+    @media (prefers-color-scheme: dark){
+      :root{--bg:#1e1e1e;--card:#282828;--text:#f0f0f0;--muted:#aaa;--border:#333;
+            --shadow:0 2px 8px rgba(0,0,0,.4)}
+    }
+  </style>
+</head>
+<body>
+  <h1>Smart‑Bin Classification Feed</h1>
+  <div id="feed">Waiting for uploads…</div>
+
+  <script>
+    async function load(){
+      try{
+        const res = await fetch('/api/records');
+        const data = await res.json();
+        const feed = document.getElementById('feed');
+        feed.innerHTML = '';
+
+        if(!data.length){
+          feed.textContent = 'Waiting for uploads…';
+          return;
+        }
+        data.forEach(r=>{
+          const time = new Date(r.ts || Date.now()).toLocaleString();
+          feed.insertAdjacentHTML('beforeend',`
+            <div class="card">
+              <img loading="lazy" src="data:image/jpeg;base64,${r.b64}">
+              <div class="card-content">
+                <div class="label">${r.label}</div>
+                <div class="explain">${(r.explain||'').replace(/\n/g,'<br>')}</div>
+                <div class="time">${time}</div>
+              </div>
+            </div>
+          `);
+        });
+      }catch(e){
+        console.error(e);
+      }
+    }
+    load(); setInterval(load, 5000);
+  </script>
+</body>
+</html>

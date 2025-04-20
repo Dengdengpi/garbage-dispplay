@@ -1,23 +1,23 @@
-/* server.js – works on Render’s read‑only FS by keeping images in RAM */
+/* server.js – keeps images in RAM so that Render’s read‑only FS is not an issue */
 const express = require("express");
-const body = require("body-parser");
+const body    = require("body-parser");
 
-const app = express();
+const app  = express();
 const PORT = process.env.PORT || 3000;
-const records = [];                // {label, b64, ts}
+const records = [];                // { label, explain, b64, ts }
 
-/* json up to 8 MB */
+/* JSON up to ~8 MB */
 app.use(body.json({ limit: "8mb" }));
 app.use(express.static("public"));
 
 app.post("/upload", (req, res) => {
-  const { label, image } = req.body;
+  const { label, explain, image } = req.body;
   if (!label || !image) return res.status(400).send("bad");
-  records.unshift({ label, b64: image, ts: Date.now() });
+  records.unshift({ label, explain: explain || "", b64: image, ts: Date.now() });
   console.log("✅", label);
   res.sendStatus(200);
 });
 
 app.get("/api/records", (_req, res) => res.json(records));
 
-app.listen(PORT, () => console.log("✅ Server on :" + PORT));
+app.listen(PORT, () => console.log("✅ Server listening on :" + PORT));
