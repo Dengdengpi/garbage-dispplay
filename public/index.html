@@ -2,143 +2,213 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Smart‑Bin Multi‑Object Feed</title>
+  <title>Smart‑Bin Admin Feed</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
 
-  <!-- ① Import a Google Font -->
+  <!-- Orbitron font & subtle icon font -->
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-
   <style>
+    /* ─────────── starfield background ─────────── */
+    canvas#starfield { position: fixed; top:0; left:0; width:100%; height:100%; z-index:-1; }
+    /* ─────────── global ─────────── */
     :root {
-      --bg: #0d0d0d;
-      --card: #1a1a1a;
-      --txt: #f0f0f0;
-      --accent: #00e5ff;
-      --shadow: 0 4px 20px rgba(0,229,255,0.2);
+      --bg: #000;
+      --fg: #0ff;
+      --card-bg: rgba(0,0,0,0.7);
+      --shadow: 0 10px 30px rgba(0,255,255,0.2);
     }
-    * { box-sizing: border-box; margin:0; padding:0; }
+    * { margin:0; padding:0; box-sizing:border-box; }
     body {
       background: var(--bg);
-      color: var(--txt);
+      color: var(--fg);
       font-family: 'Orbitron', sans-serif;
+      overflow-x: hidden;
       padding: 1rem;
     }
     h1 {
       text-align: center;
       font-size: 2.5rem;
-      color: var(--accent);
-      animation: glow 1.5s infinite alternate;
+      margin-bottom: 1rem;
+      animation: neon 1.5s ease-in-out infinite alternate;
     }
-    @keyframes glow {
-      from { text-shadow: 0 0 10px var(--accent); }
-      to   { text-shadow: 0 0 30px var(--accent); }
+    @keyframes neon {
+      from { text-shadow: 0 0 10px var(--fg); }
+      to   { text-shadow: 0 0 30px var(--fg); }
     }
     #controls {
       text-align: center;
       margin-bottom: 1rem;
     }
     #clearAll {
-      background: transparent;
-      border: 2px solid var(--accent);
-      color: var(--accent);
       padding: 0.5rem 1rem;
       font-size: 1rem;
+      border: 2px solid var(--fg);
+      background: transparent;
+      color: var(--fg);
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.3s ease;
     }
     #clearAll:hover {
-      background: var(--accent);
+      background: var(--fg);
       color: var(--bg);
       box-shadow: var(--shadow);
       transform: scale(1.05);
     }
-    #feed {
-      display: grid;
-      grid-template-columns: repeat(auto-fill,minmax(280px,1fr));
-      gap: 1rem;
+    /* ─────────── deck container ─────────── */
+    #deck {
+      position: relative;
+      width: 100%;
+      max-width: 800px;
+      height: 500px;
+      margin: auto;
+      perspective: 1000px;
     }
     .card {
-      background: var(--card);
+      position: absolute;
+      top:0; left:50%;
+      width: 90%;
+      max-width: 400px;
+      transform-origin: top center;
+      background: var(--card-bg);
+      color: var(--fg);
       border-radius: 12px;
-      overflow: hidden;
       box-shadow: var(--shadow);
-      transform: perspective(600px) translateZ(0);
-      animation: fadeIn 0.6s ease both;
-      transition: transform 0.3s ease;
-    }
-    .card:hover {
-      transform: perspective(600px) translateZ(20px) rotateX(3deg);
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px) scale(0.95); }
-      to   { opacity: 1; transform: translateY(0) scale(1); }
+      cursor: grab;
+      overflow: hidden;
+      transition: transform 0.5s ease, z-index 0.5s;
     }
     .card img {
-      width: 100%;
-      display: block;
-      filter: brightness(1.1) contrast(1.2);
-      transition: filter 0.5s ease;
+      width:100%;
+      display:block;
+      filter: brightness(1.2) contrast(1.3);
     }
-    .card:hover img {
-      filter: brightness(1.3) contrast(1.4);
+    .card .content {
+      padding: 1rem;
+      text-align: left;
     }
-    .card-content {
-      padding: 0.8rem 1rem;
-    }
-    .card-content pre {
-      font-family: 'Courier New',monospace;
-      font-size: 0.9rem;
-      color: var(--txt);
+    .card .content h3 {
       margin-bottom: 0.5rem;
+      font-size: 1.2rem;
+      color: var(--fg);
     }
-    .time {
+    .card .content p {
+      margin: 0.3rem 0;
+      font-size: 0.9rem;
+      line-height:1.4;
+    }
+    .card .time {
+      position: absolute;
+      bottom: 8px;
+      right: 12px;
       font-size: 0.75rem;
-      color: var(--accent);
-      text-align: right;
+      color: var(--fg);
     }
   </style>
 </head>
 <body>
-  <h1>Smart‑Bin Feed</h1>
+  <canvas id="starfield"></canvas>
+  <h1>Smart‑Bin Admin</h1>
   <div id="controls">
     <button id="clearAll">🧹 Clear All History</button>
   </div>
-  <div id="feed">Loading…</div>
+  <div id="deck"></div>
 
   <script>
-    async function load() {
-      const res = await fetch('/api/records');
-      const data = await res.json();
-      const feed = document.getElementById('feed');
-      feed.innerHTML = '';
-      if (!data.length) {
-        feed.textContent = 'No records yet.';
-        return;
-      }
-      data.forEach(r => {
-        const t = new Date(r.ts).toLocaleString();
-        feed.insertAdjacentHTML('beforeend', `
-          <div class="card">
-            <img src="data:image/jpeg;base64,${r.b64}" loading="lazy">
-            <div class="card-content">
-              <pre>${r.report.replace(/</g,'&lt;')}</pre>
-              <div class="time">${t}</div>
-            </div>
-          </div>`);
+  // ─── Starfield ───
+  (() => {
+    const c = document.getElementById('starfield');
+    const ctx = c.getContext('2d');
+    function resize() { c.width = innerWidth; c.height = innerHeight; }
+    window.addEventListener('resize', resize);
+    resize();
+    const stars = Array.from({length:200},()=>({
+      x:Math.random()*c.width,
+      y:Math.random()*c.height,
+      r:Math.random()*1.5+0.5,
+      s:Math.random()*0.5+0.2
+    }));
+    function anim(){
+      ctx.fillStyle='#000'; ctx.fillRect(0,0,c.width,c.height);
+      ctx.fillStyle='#0ff';
+      stars.forEach(st=>{
+        st.y += st.s;
+        if(st.y>c.height){st.y=0;st.x=Math.random()*c.width;}
+        ctx.beginPath(); ctx.arc(st.x,st.y,st.r,0,2*Math.PI); ctx.fill();
       });
+      requestAnimationFrame(anim);
     }
-    document.getElementById('clearAll').onclick = async () => {
-      if (!confirm('Clear all history?')) return;
-      const res = await fetch('/clear-all?token=' + encodeURIComponent('${ADMIN_TOKEN}'), {
-        method: 'POST'
+    anim();
+  })();
+
+  // ─── Data & Deck Logic ───
+  let records = [];
+  async function loadData(){
+    const r = await fetch('/api/records');
+    records = await r.json();
+    renderDeck();
+  }
+
+  function renderDeck(){
+    const deck = document.getElementById('deck');
+    deck.innerHTML = '';
+    // newest on top -> build bottom to top
+    records.forEach((rec,i)=>{
+      const idx = records.length - 1 - i;  // bottom index
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.style.zIndex = i;
+      const offset = i * 8;    // vertical/scale offset
+      const scale  = 1 - (records.length-1 - i)*0.02;
+      el.style.transform = `translate(-50%, ${offset}px) scale(${scale})`;
+      el.innerHTML = `
+        <img src="data:image/jpeg;base64,${rec.b64}" loading="lazy">
+        <div class="content">
+          <h3>${rec.report.split('\n')[0]}</h3>
+          <p><strong>Reason 1:</strong> ${rec.report.split('\n')[1]||''}</p>
+          <p><strong>Reason 2:</strong> ${rec.report.split('\n')[2]||''}</p>
+        </div>
+        <div class="time">${new Date(rec.ts).toLocaleString()}</div>
+      `;
+      // click to bring to top
+      el.addEventListener('click',()=>{
+        const sel = records.splice(i,1)[0];
+        records.push(sel);
+        renderDeck();
       });
-      if (res.ok) alert('All history cleared.');
-      else alert('Failed. Check ADMIN_TOKEN.');
-      load();
-    };
-    load();
-    setInterval(load,5000);
+      deck.appendChild(el);
+    });
+  }
+
+  // ─── Swipe support ───
+  (()=>{
+    let startX=0;
+    const deck = document.getElementById('deck');
+    deck.addEventListener('touchstart',e=> startX = e.touches[0].clientX);
+    deck.addEventListener('touchend',e=>{
+      const dx = e.changedTouches[0].clientX - startX;
+      if(Math.abs(dx)>50){
+        if(dx<0){
+          // swipe left → oldest to top
+          records.unshift(records.pop());
+        } else {
+          // swipe right → top to oldest
+          records.push(records.shift());
+        }
+        renderDeck();
+      }
+    });
+  })();
+
+  // ─── Clear All ───
+  document.getElementById('clearAll').onclick = async ()=>{
+    if(!confirm('Clear ALL history?')) return;
+    await fetch('/clear-all',{ method:'POST' });
+    loadData();
+  };
+
+  loadData();
+  setInterval(loadData,5000);
   </script>
 </body>
 </html>

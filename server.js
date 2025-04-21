@@ -1,15 +1,14 @@
-/* server.js – triggers, polling, per‑UID feed, admin feed, clear endpoints */
+/* server.js – polling, triggers, per‑UID, admin feed, clear endpoints */
 const express = require("express");
 const body    = require("body-parser");
 const path    = require("path");
 const app     = express();
 const PORT    = process.env.PORT || 3000;
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN;   // set in env
 
 let records    = [];       // { uid, report, b64, ts }
-let triggerUID = "";       // pending capture uid
+let triggerUID = "";       // latched by /trigger
 
-// CORS for ESP32 + user page
+// CORS for ESP + pages
 app.use((_,res,next)=>{
   res.setHeader("Access-Control-Allow-Origin","*");
   res.setHeader("Access-Control-Allow-Methods","GET,POST");
@@ -18,7 +17,7 @@ app.use((_,res,next)=>{
 app.use(body.json({limit:"8mb"}));
 app.use(express.static(path.join(__dirname,"public")));
 
-// ESP32 uploads
+// 1. ESP32 uploads
 app.post("/upload",(req,res)=>{
   const { uid, report, image } = req.body;
   if(!uid||!report||!image) return res.status(400).send("bad");
@@ -26,7 +25,7 @@ app.post("/upload",(req,res)=>{
   res.sendStatus(200);
 });
 
-// user triggers a capture
+// 2. User triggers capture
 app.get("/trigger",(req,res)=>{
   const uid = req.query.uid;
   if(!uid) return res.status(400).send("uid required");
@@ -34,39 +33,32 @@ app.get("/trigger",(req,res)=>{
   res.sendStatus(200);
 });
 
-// ESP32 polls every second
+// 3. ESP polls
 app.get("/poll",(_,res)=>{
   res.json({ uid: triggerUID });
-  triggerUID = "";  // clear latch
+  triggerUID = "";
 });
 
-// feed: admin (all) or per‑uid
+// 4. Feed: admin (all) or per‑uid
 app.get("/api/records",(req,res)=>{
   const uid = req.query.uid;
-  if(uid) {
-    res.json(records.filter(r=>r.uid===uid));
-  } else {
-    res.json(records);
-  }
+  if(uid) res.json(records.filter(r=>r.uid===uid));
+  else    res.json(records);
 });
 
-// admin clear all
-app.post("/clear-all",(req,res)=>{
-  if(req.query.token!==ADMIN_TOKEN) return res.sendStatus(403);
+// 5. Admin clear all
+app.post("/clear-all",(_,res)=>{
   records.length = 0;
-  console.log("🧹 All records cleared by admin.");
+  console.log("🧹 Cleared all history");
   res.sendStatus(200);
 });
 
-// user clear own history
+// 6. User clear own
 app.post("/clear-user",(req,res)=>{
   const uid = req.query.uid;
   if(!uid) return res.status(400).send("uid required");
-  // remove all records matching uid
-  for(let i=records.length-1;i>=0;--i){
-    if(records[i].uid===uid) records.splice(i,1);
-  }
-  console.log(`🧹 Cleared records for user ${uid}.`);
+  records = records.filter(r=>r.uid!==uid);
+  console.log(`🧹 Cleared history for ${uid}`);
   res.sendStatus(200);
 });
 
