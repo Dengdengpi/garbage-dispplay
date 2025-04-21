@@ -2,95 +2,134 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Smart‑Bin Admin</title>
+  <title>Smart‑Bin Admin Feed</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
-
   <style>
-    /* ─── BACKGROUND ─── */
-    #gradientBG{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#ff0080,#ff8c00,#40c8ff,#ff40ff);background-size:600% 600%;animation:swirl 15s ease infinite;opacity:.6;z-index:-10000}
-    @keyframes swirl{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-    #starfield,#starRain{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:-9999}
-    canvas{position:absolute;top:0;left:0;width:100%;height:100%}
-    .fall{position:absolute;color:#fff;font-size:1rem;animation:fall 4s linear infinite}
-    @keyframes fall{0%{transform:translateY(-20px);opacity:1}100%{transform:translateY(110vh);opacity:0}}
-
-    /* ─── GLOBAL ─── */
-    :root{--fg:#0ff;--card:#111;--shadow:0 6px 20px rgba(0,255,255,.25)}
-    *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Orbitron',sans-serif;background:#000;color:var(--fg);overflow-x:hidden;padding:1rem}
-    h1{text-align:center;font-size:2.5rem;margin-bottom:1rem;text-shadow:0 0 10px var(--fg),0 0 25px var(--fg);}
-    #controls{text-align:center;margin-bottom:1rem}
-    #controls button{border:2px solid var(--fg);background:transparent;color:var(--fg);padding:.5rem 1rem;border-radius:8px;cursor:pointer;transition:.3s}
-    #controls button:hover{background:var(--fg);color:#000;box-shadow:var(--shadow);transform:scale(1.05)}
-
-    /* ─── FEED ─── */
-    #feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:1.2rem}
-    .card{background:var(--card);border-radius:12px;box-shadow:var(--shadow);overflow:hidden;position:relative;display:flex;flex-direction:column;min-height:380px}
-    .title{font-size:1.1rem;padding:1rem 1rem .4rem;color:var(--fg)}
-    .card img{width:100%;object-fit:cover;flex-shrink:0;height:200px;filter:brightness(1.15) contrast(1.25)}
-    ul.reasons{list-style:disc;padding:0 1.2rem;margin:1rem 0 2rem;color:var(--fg);font-size:.95rem}
-    ul.reasons li{margin:.2rem 0}
-    .time{position:absolute;bottom:10px;right:14px;font-size:.75rem;color:var(--fg)}
+    body {
+      margin:0; padding:1rem;
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+    }
+    h1 {
+      text-align:center;
+      margin-bottom:1rem;
+    }
+    #feed {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px,1fr));
+      gap: 1rem;
+    }
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s;
+    }
+    .card:hover {
+      transform: scale(1.03);
+    }
+    .card img {
+      width: 100%;
+      height: auto;
+      object-fit: cover;
+    }
+    .title {
+      text-align: center;
+      font-weight: bold;
+      font-size: 1rem;
+      padding: 0.5rem 1rem;
+      border-bottom: 1px solid #eee;
+    }
+    .comments {
+      flex-grow: 1;
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+      line-height: 1.3;
+      color: #555;
+    }
+    .time {
+      text-align: right;
+      font-size: 0.75rem;
+      color: #999;
+      padding: 0.5rem 1rem;
+    }
+    #controls {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    #clearAll {
+      padding: 0.5rem 1rem;
+      font-size: 0.9rem;
+      border: 1px solid #333;
+      background: #fff;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    #clearAll:hover {
+      background: #eee;
+    }
   </style>
 </head>
 <body>
-  <div id="gradientBG"></div>
-  <div id="starfield"><canvas id="sf1"></canvas></div>
-  <div id="starRain"></div>
-
-  <h1>Smart‑Bin Admin</h1>
+  <h1>Smart‑Bin Admin Feed</h1>
   <div id="controls">
     <button id="clearAll">🧹 Clear All History</button>
   </div>
   <div id="feed">Loading…</div>
 
-<script>
-/* ─── STARFIELD & RAIN ─── */
-(function(){
-  const c=document.getElementById('sf1'),ctx=c.getContext('2d');
-  function resize(){c.width=innerWidth;c.height=innerHeight}
-  addEventListener('resize',resize);resize();
-  const stars=[...Array(300)].map(()=>({x:Math.random()*c.width,y:Math.random()*c.height,r:Math.random()*1.2,s:0.4+Math.random()*0.8}));
-  (function anim(){
-    ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='#fff';
-    stars.forEach(s=>{s.y+=s.s;if(s.y>c.height)s.y=0;ctx.fillRect(s.x,s.y,s.r,s.r)});
-    requestAnimationFrame(anim);
-  })();
-  setInterval(()=>{if(Math.random()<.7){const s=document.createElement('span');s.className='fall';s.textContent='✦';s.style.left=Math.random()*innerWidth+'px';document.getElementById('starRain').append(s);setTimeout(()=>s.remove(),4000)}},500);
-})();
+  <script>
+    // Build a single card's HTML
+    function makeCard(rec) {
+      // rec.report is three lines: "Category ; Object", comment1, comment2
+      const parts = rec.report.split('\n');
+      let [cat,obj] = parts[0].split(';').map(s=>s.trim());
+      // swap order: "Object – Category"
+      const title = `${obj} – ${cat}`;
+      const c1 = parts[1] || "";
+      const c2 = parts[2] || "";
+      const time = new Date(rec.ts).toLocaleString();
+      return `
+        <div class="card">
+          <img src="data:image/jpeg;base64,${rec.b64}" alt="${obj}">
+          <div class="title">${title}</div>
+          <div class="comments">
+            <p>${c1}</p>
+            <p>${c2}</p>
+          </div>
+          <div class="time">${time}</div>
+        </div>
+      `;
+    }
 
-/* ─── BUILD CARD HTML ─── */
-function makeCard(rec){
-  const [cat,obj]=rec.report.split(';').map(t=>t.trim());
-  const title=`${obj} – ${cat}`;
-  const lines=rec.report.split('\n');
-  return `
-    <div class="card">
-      <div class="title">${title}</div>
-      <img src="data:image/jpeg;base64,${rec.b64}">
-      <ul class="reasons">
-        <li>${lines[1]||''}</li>
-        <li>${lines[2]||''}</li>
-      </ul>
-      <div class="time">${new Date(rec.ts).toLocaleString()}</div>
-    </div>`;
-}
+    // Fetch + render feed
+    async function loadFeed() {
+      const res = await fetch('/api/records');
+      const data = await res.json();
+      const feed = document.getElementById('feed');
+      feed.innerHTML = '';
+      if (!data.length) {
+        feed.textContent = 'No records yet.';
+        return;
+      }
+      data.forEach(rec => {
+        feed.insertAdjacentHTML('beforeend', makeCard(rec));
+      });
+    }
 
-/* ─── LOAD FEED ─── */
-async function load(){
-  const r=await fetch('/api/records');const data=await r.json();
-  const feed=document.getElementById('feed');feed.innerHTML='';
-  if(!data.length){feed.textContent='No records yet.';return;}
-  data.forEach(rec=>feed.insertAdjacentHTML('beforeend',makeCard(rec)));
-}
-load();setInterval(load,5000);
+    // Clear all
+    document.getElementById('clearAll').onclick = async () => {
+      if (!confirm('Are you sure? This deletes EVERYTHING.')) return;
+      await fetch('/clear-all', { method: 'POST' });
+      loadFeed();
+    };
 
-/* ─── CLEAR ALL ─── */
-document.getElementById('clearAll').onclick=async()=>{
-  if(!confirm('Delete ALL history?'))return;
-  await fetch('/clear-all',{method:'POST'});load();
-};
-</script>
+    loadFeed();
+    setInterval(loadFeed, 5000);
+  </script>
 </body>
 </html>
