@@ -4,256 +4,106 @@
   <meta charset="utf-8">
   <title>Smart‑Bin</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-
-  <!-- Orbitron for item titles -->
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&display=swap" rel="stylesheet"/>
-
   <style>
-    /* ───── Background Effects ───── */
-    #gradientBG {
-      position:fixed; top:0; left:0; width:100%; height:100%;
-      background:linear-gradient(135deg,#ff0080,#ff8c00,#40c8ff,#ff40ff);
-      background-size:600% 600%; animation:swirl 15s ease infinite;
-      opacity:.6; z-index:-10000;
-    }
-    @keyframes swirl {
-      0%{background-position:0% 50%}
-      50%{background-position:100% 50%}
-      100%{background-position:0% 50%}
-    }
-    #starfield,#starRain {
-      position:fixed; top:0; left:0; width:100%; height:100%;
-      pointer-events:none; z-index:-9999;
-    }
-    canvas {
-      position:absolute; top:0; left:0;
-      width:100%; height:100%;
-    }
-    .fall {
-      position:absolute; color:#fff; font-size:1rem;
-      animation:fall 4s linear infinite;
-    }
-    @keyframes fall {
-      0% { transform:translateY(-20px); opacity:1; }
-      100% { transform:translateY(110vh); opacity:0; }
-    }
-
-    /* ───── Page Layout ───── */
-    body {
-      margin:0; padding:1rem;
-      font-family:Arial,sans-serif;
-      background:transparent; color:#fff;
-      overflow-x:hidden;
-    }
-    h1 {
-      text-align:center; margin-bottom:1rem;
-      text-shadow:0 0 10px #fff;
-    }
-    #controls {
-      text-align:center; margin-bottom:1rem;
-      display:flex; gap:1rem; justify-content:center;
-    }
+    body { margin:0; padding:1rem; font-family:Arial,sans-serif; background:#111; color:#eee; }
+    h1 { text-align:center; margin-bottom:1rem; }
+    #controls { text-align:center; margin-bottom:1rem; display:flex; gap:1rem; justify-content:center; }
     #controls button {
-      padding:.5rem 1rem;
-      border:1px solid #fff;
-      background:rgba(255,255,255,.1);
-      color:#fff;
-      border-radius:4px;
-      cursor:pointer;
-      transition:.3s;
+      padding:.5rem 1rem; border:1px solid #eee; background:transparent; color:#eee; border-radius:4px; cursor:pointer;
     }
-    #controls button:hover {
-      background:rgba(255,255,255,.3);
-    }
+    #controls button:hover { background:rgba(255,255,255,.1); }
 
-    /* ───── Feed & Cards ───── */
-    #feed {
-      display:grid;
-      grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
-      gap:1rem;
-    }
+    #feed { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:1rem; }
     .card {
-      background:rgba(0,0,0,0.6);
-      border-radius:8px;
-      overflow:hidden;
-      box-shadow:0 4px 12px rgba(0,0,0,.5);
-      display:flex;
-      flex-direction:column;
+      background:#222; border-radius:8px; overflow:hidden;
+      box-shadow:0 4px 12px rgba(0,0,0,.7); display:flex; flex-direction:column;
       transition:transform .2s;
     }
-    .card:hover {
-      transform:scale(1.02);
-    }
-    .card img {
-      width:100%; height:auto;
-      object-fit:cover;
-    }
+    .card:hover { transform:scale(1.02); }
+    .card img { width:100%; height:auto; object-fit:cover; }
+    .item-list { list-style:none; margin:0; padding:1rem; }
+    .item-list li { margin-bottom:.8rem; }
+    .item-title { font-size:1.1rem; font-weight:bold; color:#0ff; }
+    .item-reason { font-size:.9rem; font-style:italic; color:#ccc; margin-left:1rem; }
+    .time { text-align:right; font-size:.75rem; color:#999; padding:.3rem 1rem .6rem; }
 
-    /* ───── Item List Inside Card ───── */
-    .item-list {
-      flex-grow:1;
-      padding:1rem;
-    }
-    .item {
-      margin-bottom:1rem;
-    }
-    .item-title {
-      font-family:'Orbitron',sans-serif;
-      font-size:1.2rem;
-      font-weight:700;
-      color:#0ff;
-      text-align:center;
-      margin-bottom:.25rem;
-    }
-    .item-comment {
-      font-size:.9rem;
-      color:#ddd;
-      margin-left:1rem;
-      font-style:italic;
-      margin-bottom:.2rem;
-    }
-
-    /* ───── Timestamp ───── */
-    .time {
-      text-align:right;
-      font-size:.75rem;
-      color:#ccc;
-      padding:.5rem 1rem .8rem;
-    }
-
-    /* ───── Toast ───── */
     #toast {
-      position:fixed; top:1rem; left:50%;
-      transform:translateX(-50%);
-      background:#333; color:#fff;
-      padding:.5rem 1rem; border-radius:4px;
+      position:fixed; top:1rem; left:50%; transform:translateX(-50%);
+      background:#333; color:#fff; padding:.5rem 1rem; border-radius:4px;
       opacity:0; transition:opacity .3s;
-      pointer-events:none;
     }
-    #toast.show {
-      opacity:1;
-    }
+    #toast.show { opacity:1; }
   </style>
 </head>
 <body>
-  <div id="gradientBG"></div>
-
-  <div id="starfield">
-    <canvas id="sf1"></canvas>
-    <canvas id="sf2"></canvas>
-    <canvas id="sf3"></canvas>
-    <canvas id="sf4"></canvas>
-  </div>
-  <div id="starRain"></div>
 
   <h1>Smart‑Bin</h1>
   <div id="controls">
-    <button id="shoot">📸 Take Picture</button>
-    <button id="clearMe">🗑️ Clear My History</button>
+    <button id="shoot">📸 Take Picture</button>
+    <button id="clearMe">🗑️ Clear My History</button>
   </div>
-
   <div id="feed">Loading…</div>
   <div id="toast"></div>
 
   <script>
-    // ─── Starfield Layers ───
-    ['sf1','sf2','sf3','sf4'].forEach((id,i)=>{
-      const c=document.getElementById(id), ctx=c.getContext('2d');
-      function resize(){ c.width = innerWidth; c.height = innerHeight; }
-      window.addEventListener('resize', resize);
-      resize();
-      const stars = Array.from({length:200 + i*40}, () => ({
-        x: Math.random()*c.width,
-        y: Math.random()*c.height,
-        r: Math.random()*1.5,
-        s: 0.3 + i*0.3 + Math.random()*0.4
-      }));
-      (function draw(){
-        ctx.clearRect(0,0,c.width,c.height);
-        ctx.fillStyle = '#fff';
-        stars.forEach(s => {
-          s.y += s.s;
-          if(s.y > c.height) s.y = 0;
-          ctx.fillRect(s.x, s.y, s.r, s.r);
-        });
-        requestAnimationFrame(draw);
-      })();
-    });
-
-    // ─── Falling Stars ───
-    setInterval(()=>{
-      if(Math.random() < 0.6) {
-        const sp = document.createElement('span');
-        sp.className = 'fall';
-        sp.textContent = '✦';
-        sp.style.left = Math.random()*innerWidth + 'px';
-        document.getElementById('starRain').append(sp);
-        setTimeout(()=>sp.remove(), 4000);
-      }
-    }, 500);
-
-    // ─── UID & Toast ───
     const uid = localStorage.uid || crypto.randomUUID();
     localStorage.uid = uid;
-    function showToast(msg) {
+    function showToast(msg){
       const t = document.getElementById('toast');
       t.textContent = msg;
       t.classList.add('show');
-      setTimeout(()=>t.classList.remove('show'), 1500);
+      setTimeout(()=> t.classList.remove('show'),1500);
     }
 
-    // ─── Build ONE card per photo, with multiple items inside ───
-    function makeCard(rec) {
+    function makeCards(rec){
       const blocks = rec.report.trim().split(/\n\s*\n/);
-      const itemsHTML = blocks.map(block => {
+      return blocks.map(block=>{
         const lines = block.split('\n').map(l=>l.trim());
         let [cat,obj] = lines[0].split(';').map(s=>s.trim());
         const title = `${obj} – ${cat}`;
-        const r1 = lines[1]||'';
-        const r2 = lines[2]||'';
+        const r1 = lines[1]||'', r2 = lines[2]||'';
+        const time = new Date(rec.ts).toLocaleString();
         return `
-          <div class="item">
-            <div class="item-title">${title}</div>
-            <div class="item-comment">• ${r1}</div>
-            <div class="item-comment">• ${r2}</div>
+          <div class="card">
+            <img src="data:image/jpeg;base64,${rec.b64}">
+            <ul class="item-list">
+              <li>
+                <div class="item-title">${title}</div>
+                <div class="item-reason">• ${r1}</div>
+                <div class="item-reason">• ${r2}</div>
+              </li>
+            </ul>
+            <div class="time">${time}</div>
           </div>`;
       }).join('');
-      const time = new Date(rec.ts).toLocaleString();
-      return `
-        <div class="card">
-          <img src="data:image/jpeg;base64,${rec.b64}">
-          <div class="item-list">${itemsHTML}</div>
-          <div class="time">${time}</div>
-        </div>`;
     }
 
-    // ─── Load & Refresh ───
-    async function loadFeed() {
-      const res = await fetch(`/api/records?uid=${uid}`);
-      const data = await res.json();
+    async function loadFeed(){
+      const r = await fetch(`/api/records?uid=${uid}`);
+      const data = await r.json();
       const feed = document.getElementById('feed');
       feed.innerHTML = '';
-      if(!data.length) {
+      if (!data.length) {
         feed.textContent = 'No history yet.';
         return;
       }
-      data.forEach(rec => feed.insertAdjacentHTML('beforeend', makeCard(rec)));
+      data.forEach(rec => feed.insertAdjacentHTML('beforeend', makeCards(rec)));
     }
-    loadFeed();
-    setInterval(loadFeed, 5000);
 
-    // ─── Buttons ───
-    document.getElementById('shoot').onclick = async ()=>{
+    document.getElementById('shoot').onclick = async()=>{
       showToast('Capturing…');
       await fetch(`/trigger?uid=${uid}`);
       showToast('Captured!');
     };
-    document.getElementById('clearMe').onclick = async ()=>{
-      if(!confirm('Delete your history?')) return;
-      await fetch(`/clear-user?uid=${uid}`, { method:'POST' });
+    document.getElementById('clearMe').onclick = async()=>{
+      if (!confirm('Delete your history?')) return;
+      await fetch(`/clear-user?uid=${uid}`,{ method:'POST' });
       showToast('Cleared');
       loadFeed();
     };
+
+    loadFeed();
+    setInterval(loadFeed,5000);
   </script>
 </body>
 </html>
