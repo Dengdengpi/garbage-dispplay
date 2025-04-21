@@ -1,32 +1,159 @@
-<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
-<title>Smart‑Bin</title>
-<style>
-body{font-family:system-ui,sans-serif;margin:0;background:#f4f7fa;text-align:center}
-button{margin:2rem auto 1rem;padding:1rem 2.2rem;font-size:1.05rem;border:0;border-radius:8px;background:#2b7cff;color:#fff;cursor:pointer}
-#feed{max-width:640px;margin:auto;padding:0 1rem}
-.card{background:#fff;margin:1rem 0;border-radius:10px;box-shadow:0 3px 12px rgba(0,0,0,.08)}
-.card img{width:100%;display:block}
-.card pre{white-space:pre-wrap;font-size:.85rem;padding:.8rem;color:#555}
-small{display:block;font-size:.75rem;color:#888;padding:.5rem .8rem;border-top:1px solid #eee}
-@media(prefers-color-scheme:dark){
- body{background:#1e1e1e} .card{background:#282828} pre,small{color:#bbb}
- button{background:#468bff}
-}
-</style>
-<h2>Smart‑Bin</h2>
-<button id=shoot>📸 Take picture</button>
-<div id=feed>Loading…</div>
-<script>
-const uid=localStorage.uid||crypto.randomUUID();localStorage.uid=uid;
-const api="/api/records?uid="+uid;
-shoot.onclick=()=>fetch("/trigger?uid="+uid).catch(alert);
-async function load(){
-  const r=await fetch(api); const data=await r.json();
-  feed.innerHTML=''; if(!data.length){feed.textContent='No history yet.';return;}
-  data.forEach(e=>{const t=new Date(e.ts).toLocaleString();
-    feed.insertAdjacentHTML('beforeend',`
-    <div class=card><img src="data:image/jpeg;base64,${e.b64}">
-    <pre>${e.report.replace(/</g,'&lt;')}</pre><small>${t}</small></div>`);});
-}
-load();setInterval(load,5000);
-</script>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Smart‑Bin</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+  <!-- Google Font + Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #010a13;
+      --fg: #e0f7fa;
+      --btn: #00e5ff;
+      --card: #021627;
+      --shadow: 0 4px 20px rgba(0,229,255,0.3);
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'Orbitron',sans-serif;
+      text-align: center;
+      padding: 1rem;
+    }
+    h2 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      animation: neon 1.5s ease-in-out infinite alternate;
+    }
+    @keyframes neon {
+      from { text-shadow: 0 0 5px var(--btn), 0 0 20px var(--btn); }
+      to   { text-shadow: 0 0 15px var(--btn), 0 0 30px var(--btn); }
+    }
+    button {
+      background: var(--btn);
+      border: none;
+      padding: 1rem 2rem;
+      font-size: 1.1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      transition: transform 0.3s ease;
+    }
+    button:hover { transform: scale(1.05); }
+    #controls { margin-bottom: 1rem; }
+    #controls button { margin-right: 0.5rem; }
+    #feed { max-width: 600px; margin:auto; }
+    .card {
+      background: var(--card);
+      border-radius: 10px;
+      margin: 1rem 0;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transform-origin: center;
+      animation: fadeIn 0.7s ease both;
+    }
+    @keyframes fadeIn {
+      from { opacity:0; transform:scale(0.9); }
+      to   { opacity:1; transform:scale(1); }
+    }
+    .card img {
+      width:100%; display:block;
+      filter: brightness(1.2) contrast(1.3);
+    }
+    .card pre {
+      font-family: monospace;
+      padding: 0.8rem;
+      text-align: left;
+      color: var(--fg);
+    }
+    small {
+      display:block;
+      padding: 0.5rem 0.8rem;
+      color: var(--fg);
+      font-size:0.75rem;
+      text-align:right;
+      border-top:1px solid #034157;
+    }
+    /* toast */
+    #toast {
+      position: fixed;
+      top: 1rem; left:50%;
+      transform: translateX(-50%);
+      background: var(--btn);
+      color: var(--bg);
+      padding: 0.8rem 1.5rem;
+      border-radius: 5px;
+      opacity: 0; pointer-events: none;
+      animation: none;
+    }
+    @keyframes showToast {
+      0% { opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <h2>Smart‑Bin</h2>
+  <div id="controls">
+    <button id="shoot">📸 Take Picture</button>
+    <button id="clearMe">🗑️ Clear My History</button>
+  </div>
+  <div id="feed">Loading…</div>
+  <div id="toast">Captured!</div>
+
+  <script>
+    const uid = localStorage.uid || crypto.randomUUID();
+    localStorage.uid = uid;
+    const apiFeed = `/api/records?uid=${uid}`;
+
+    // Show toast
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.animation = 'showToast 3s ease forwards';
+      setTimeout(()=> t.style.animation='none',3000);
+    }
+
+    // Shoot button
+    document.getElementById('shoot').onclick = async () => {
+      showToast('Capturing…');
+      await fetch(`/trigger?uid=${uid}`).catch(e=>showToast('Error'));
+      showToast('Captured!');
+    };
+
+    // Clear my history
+    document.getElementById('clearMe').onclick = async () => {
+      if(!confirm('Delete your history?')) return;
+      const res = await fetch(`/clear-user?uid=${uid}`,{ method:'POST' });
+      if(res.ok) { showToast('History cleared'); load(); }
+      else showToast('Failed');
+    };
+
+    // Load user feed
+    async function load(){
+      const r = await fetch(apiFeed);
+      const data = await r.json();
+      const feed = document.getElementById('feed');
+      feed.innerHTML = '';
+      if(!data.length){ feed.textContent = 'No history yet.'; return; }
+      data.forEach(e => {
+        const t = new Date(e.ts).toLocaleString();
+        feed.insertAdjacentHTML('beforeend',`
+          <div class="card">
+            <img src="data:image/jpeg;base64,${e.b64}">
+            <pre>${e.report.replace(/</g,'&lt;')}</pre>
+            <small>${t}</small>
+          </div>`);
+      });
+    }
+
+    load();
+    setInterval(load,5000);
+  </script>
+</body>
+</html>
