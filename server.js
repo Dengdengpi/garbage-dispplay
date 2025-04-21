@@ -1,20 +1,20 @@
-/* server.js – all previous logic, now adds simple CORS */
+/* server.js – triggers, polling, per‑UID feed, admin feed */
 const express = require("express");
 const body    = require("body-parser");
+const path    = require("path");
 const app  = express();
 const PORT = process.env.PORT || 3000;
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN;   // optional
 
-const records = [];   // { uid, report, b64, ts }
+const records = [];           // { uid, report, b64, ts }
+let triggerUID = "";          // pending capture uid
 
-app.use((_,res,next)=>{  // CORS for all routes
-  res.setHeader("Access-Control-Allow-Origin","*");
-  next();
-});
+/* CORS for ESP32 + user page */
+app.use((_,res,next)=>{res.setHeader("Access-Control-Allow-Origin","*");next();});
 app.use(body.json({limit:"8mb"}));
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname,"public")));
 
-/* ESP32 uploads */
+/* ----- ESP32 uploads ----- */
 app.post("/upload",(req,res)=>{
   const { uid, report, image } = req.body;
   if(!uid||!report||!image) return res.status(400).send("bad");
@@ -22,7 +22,21 @@ app.post("/upload",(req,res)=>{
   res.sendStatus(200);
 });
 
-/* admin (all) or per-user feed */
+/* ----- user triggers a capture ----- */
+app.get("/trigger",(req,res)=>{
+  const uid=req.query.uid;
+  if(!uid) return res.status(400).send("uid req");
+  triggerUID = uid;
+  res.sendStatus(200);
+});
+
+/* ----- ESP32 polls every second ----- */
+app.get("/poll",(req,res)=>{
+  res.json({ uid: triggerUID });
+  triggerUID = "";                  // clear latch
+});
+
+/* ----- feed: admin (all) or per‑uid ----- */
 app.get("/api/records",(req,res)=>{
   const uid=req.query.uid;
   res.json(uid? records.filter(r=>r.uid===uid) : records);
