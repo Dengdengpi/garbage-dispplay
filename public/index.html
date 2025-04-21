@@ -2,60 +2,94 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Smart‑Bin Multi‑Object Feed</title>
+<title>Smart‑Bin Feed</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 :root{
-  --bg:#f4f7fa;--card:#fff;--txt:#222;--muted:#555;
-  --brd:#e0e6ed;--shadow:0 4px 14px rgba(0,0,0,.05);
+  --bg:#f4f7fa;--card:#fff;--txt:#222;--muted:#666;
+  --brd:#e0e6ed;--shadow:0 3px 12px rgba(0,0,0,.06);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,sans-serif;background:var(--bg);padding:1rem}
-h1{font-size:1.7rem;margin-bottom:1rem;color:var(--txt)}
-#feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1.2rem}
-.card{background:var(--card);border:1px solid var(--brd);border-radius:12px;
-      box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
-.card img{width:100%;height:auto;display:block}
-.card-content{padding:1rem}
-pre{white-space:pre-wrap;font-size:.9rem;line-height:1.35;color:var(--muted);margin-top:.5rem}
-.time{font-size:.75rem;color:var(--muted);margin-top:.75rem}
+body{font-family:system-ui,sans-serif;background:var(--bg)}
+header{padding:1rem 1rem 0;display:flex;align-items:center;gap:1rem}
+h1{font-size:1.4rem;color:var(--txt);flex:1}
+button.tab{background:none;border:none;font-size:.95rem;padding:.6rem 1rem;
+  cursor:pointer;border-bottom:2px solid transparent;color:var(--muted)}
+button.tab.active{color:var(--txt);border-color:var(--txt)}
+#feed{columns:300px 3;padding:1rem;column-gap:1rem}
+.card{display:inline-block;background:var(--card);margin:0 0 1rem;
+  border:1px solid var(--brd);border-radius:10px;box-shadow:var(--shadow);
+  overflow:hidden;width:100%}
+.card img{width:100%;display:block}
+.card pre{white-space:pre-wrap;font-size:.85rem;padding:.8rem;color:var(--muted);}
+.time{font-size:.7rem;padding:.4rem .8rem;color:var(--muted);border-top:1px solid var(--brd)}
+#clearBtn{display:none;margin-right:.5rem}
 @media(prefers-color-scheme:dark){
-  :root{--bg:#1e1e1e;--card:#282828;--txt:#f0f0f0;--muted:#aaa;--brd:#333;
-        --shadow:0 4px 14px rgba(0,0,0,.35)}
+  :root{--bg:#1e1e1e;--card:#282828;--txt:#eee;--muted:#aaa;--brd:#333;--shadow:0 3px 12px rgba(0,0,0,.4)}
 }
 </style>
 </head>
 <body>
-<h1>Smart‑Bin Feed (Multi‑Object)</h1>
-<div id="feed">Waiting for uploads…</div>
+<header>
+  <h1>Smart‑Bin</h1>
+  <button id="clearBtn">🗑 Clear</button>
+  <button class="tab active" data-tab="all">All</button>
+  <button class="tab" data-tab="mine">My History</button>
+</header>
+<div id="feed"></div>
 
 <script>
-async function load(){
-  try{
-    const res = await fetch('/api/records');
-    const data = await res.json();
-    const feed = document.getElementById('feed');
-    feed.innerHTML = '';
+const ADMIN = new URLSearchParams(location.search).get('admin')==='1';
+const feed  = document.getElementById('feed');
+const clearBtn=document.getElementById('clearBtn');
+if(ADMIN) clearBtn.style.display='block';
 
-    if(!data.length){
-      feed.textContent = 'Waiting for uploads…';
-      return;
-    }
-    data.forEach(r=>{
-      const time = new Date(r.ts || Date.now()).toLocaleString();
-      feed.insertAdjacentHTML('beforeend',`
-        <div class="card">
-          <img loading="lazy" src="data:image/jpeg;base64,${r.b64}">
-          <div class="card-content">
-            <pre>${r.report.replace(/</g,'&lt;')}</pre>
-            <div class="time">${time}</div>
-          </div>
-        </div>
-      `);
-    });
-  }catch(e){console.error(e);}
+/* each browser gets its own uuid */
+let uid = localStorage.getItem('uid');
+if(!uid){ uid=crypto.randomUUID(); localStorage.setItem('uid',uid); }
+const mySet = new Set(JSON.parse(localStorage.getItem('myRecs')||'[]'));
+
+async function load(){
+  const res = await fetch('/api/records');
+  const data = await res.json();
+  render(data);
 }
-load(); setInterval(load, 5000);
+function render(data){
+  feed.innerHTML='';
+  const mode=document.querySelector('.tab.active').dataset.tab;
+  const list=(mode==='mine')? data.filter(r=>mySet.has(r.ts)):data;
+  if(!list.length){feed.innerHTML='<p style="padding:1rem">No records.</p>';return;}
+  list.forEach(r=>{
+    const time=new Date(r.ts).toLocaleString();
+    const card=document.createElement('div'); card.className='card';
+    card.innerHTML=`<img src="data:image/jpeg;base64,${r.b64}">
+      <pre>${r.report.replace(/</g,'&lt;')}</pre>
+      <div class="time">${time}</div>`;
+    card.addEventListener('click',()=>{
+      if(!mySet.has(r.ts)){
+        mySet.add(r.ts);
+        localStorage.setItem('myRecs',JSON.stringify([...mySet]));
+        if(mode==='mine') card.remove();
+      }
+    });
+    feed.appendChild(card);
+  });
+}
+/* tab switching */
+document.querySelectorAll('.tab').forEach(btn=>btn.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  load();
+});
+/* admin clear */
+clearBtn.onclick=async()=>{
+  if(!confirm('Clear ALL history?'))return;
+  const tok=prompt('Admin token:');
+  const res=await fetch('/clear?token='+encodeURIComponent(tok),{method:'POST'});
+  if(res.ok){alert('Cleared');load();} else alert('Failed');
+};
+
+load(); setInterval(load,5000);
 </script>
 </body>
 </html>
