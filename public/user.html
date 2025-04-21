@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><title>My Smart‑Bin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{font-family:system-ui,sans-serif;margin:0;background:#f4f7fa}
+header{padding:1rem;text-align:center}
+button#shoot{padding:.75rem 1.6rem;font-size:1rem;border:0;border-radius:8px;
+  background:#2b7cff;color:#fff;cursor:pointer}
+#wrap{padding:1rem;max-width:640px;margin:auto}
+.card{background:#fff;margin:1rem 0;border-radius:10px;box-shadow:0 3px 12px rgba(0,0,0,.08)}
+.card img{width:100%;display:block}
+.card pre{white-space:pre-wrap;font-size:.85rem;padding:.9rem;color:#555}
+small{display:block;font-size:.72rem;color:#888;padding:.5rem .9rem;border-top:1px solid #eee}
+@media(prefers-color-scheme:dark){
+  body{background:#1e1e1e}
+  .card{background:#282828;box-shadow:0 3px 12px rgba(0,0,0,.5)}
+  pre,small{color:#bbb} button#shoot{background:#468bff}
+}
+</style>
+</head>
+<body>
+<header><button id="shoot">📸 Take picture</button></header>
+<div id="wrap">Loading…</div>
+
+<script>
+/* persistent uid per phone */
+let uid = localStorage.getItem('uid');
+if(!uid){ uid = crypto.randomUUID(); localStorage.setItem('uid', uid); }
+
+/* remember ESP32 address (defaults to mDNS) */
+let espURL = localStorage.getItem('espURL') || 'http://esp32.local';
+
+/* take picture */
+document.getElementById('shoot').onclick = async () => {
+  try{
+    await fetch(`${espURL}/capture?uid=${uid}`);
+  }catch(e){
+    const ip = prompt("Can't reach ESP32.\nEnter its URL (e.g. http://192.168.x.x)","");
+    if(ip){ espURL = ip; localStorage.setItem('espURL', ip); }
+  }
+};
+
+async function load(){
+  const res = await fetch(`/api/records?uid=${uid}`);
+  const data = await res.json();
+  const wrap = document.getElementById('wrap');
+  wrap.innerHTML = '';
+  if(!data.length){ wrap.textContent = 'No history yet.'; return; }
+  data.forEach(r=>{
+    const t = new Date(r.ts).toLocaleString();
+    wrap.insertAdjacentHTML('beforeend',`
+      <div class="card">
+        <img src="data:image/jpeg;base64,${r.b64}">
+        <pre>${r.report.replace(/</g,'&lt;')}</pre>
+        <small>${t}</small>
+      </div>`);
+  });
+}
+load(); setInterval(load, 5000);
+</script>
+</body>
+</html>
