@@ -2,207 +2,91 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Smart‑Bin User</title>
+  <title>Smart‑Bin</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-
-  <!-- Orbitron font -->
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+
   <style>
-    :root {
-      --bg: #000;
-      --fg: #0ff;
-      --btn: #00e5ff;
-      --card-bg: rgba(0,0,0,0.7);
-      --shadow: 0 10px 30px rgba(0,255,255,0.3);
-    }
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body {
-      background: var(--bg);
-      color: var(--fg);
-      font-family: 'Orbitron',sans-serif;
-      padding:1rem;
-      overflow-x:hidden;
-    }
-    h2 {
-      text-align:center;
-      font-size:2rem;
-      margin-bottom:1rem;
-      animation: neon 1.5s ease-in-out infinite alternate;
-    }
-    @keyframes neon {
-      from { text-shadow:0 0 5px var(--btn);}
-      to   { text-shadow:0 0 20px var(--btn);}
-    }
-    #controls {
-      text-align:center; margin-bottom:1rem;
-    }
-    #controls button {
-      background: var(--btn);
-      border:none; padding:0.8rem 1.5rem;
-      font-size:1rem; border-radius:8px;
-      cursor:pointer; margin:0 .5rem;
-      box-shadow: var(--shadow);
-      transition: transform 0.3s;
-    }
-    #controls button:hover {
-      transform: scale(1.05);
-    }
-    /* deck same as admin */
-    #deck { position:relative; width:100%; max-width:600px; height:450px; margin:auto; perspective:1000px; }
-    .card {
-      position:absolute; top:0; left:50%;
-      width:90%; max-width:400px;
-      background: var(--card-bg);
-      border-radius:12px; overflow:hidden;
-      transform-origin: top center;
-      box-shadow: var(--shadow);
-      transition: transform 0.5s, z-index 0.5s;
-      cursor: grab;
-    }
-    .card img {
-      width:100%; display:block;
-      filter: brightness(1.2) contrast(1.3);
-    }
-    .card .content {
-      padding:1rem; text-align:left;
-    }
-    .card .content h3 {
-      font-size:1.1rem; margin-bottom:0.4rem;
-    }
-    .card .content p {
-      margin:0.3rem 0; font-size:0.9rem;
-    }
-    .card .time {
-      position:absolute; bottom:8px; right:12px;
-      font-size:0.75rem; color: var(--fg);
-    }
+    /* Re‑use same styles as admin */
+    #gradientBG{position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#ff0080,#ff8c00,#40c8ff,#ff40ff);background-size:600% 600%;animation:swirl 15s ease infinite;opacity:.6;z-index:-10000}
+    @keyframes swirl{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+    #starfield,#starRain{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:-9999}
+    canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+    .fall{position:absolute;color:#fff;font-size:1rem;animation:fall 4s linear infinite}
+    @keyframes fall{0%{transform:translateY(-20px);opacity:1}100%{transform:translateY(110vh);opacity:0}}
+    :root{--fg:#0ff;--card:#111;--shadow:0 6px 20px rgba(0,255,255,.25)}
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Orbitron',sans-serif;background:#000;color:var(--fg);overflow-x:hidden;padding:1rem}
+    h1{text-align:center;font-size:2.2rem;margin-bottom:1rem;text-shadow:0 0 10px var(--fg)}
+    #controls{text-align:center;margin-bottom:1rem;display:flex;justify-content:center;gap:.8rem;flex-wrap:wrap}
+    #controls button{background:var(--fg);color:#000;border:none;padding:.6rem 1.2rem;border-radius:8px;cursor:pointer;box-shadow:var(--shadow);transition:.3s}
+    #controls button:hover{transform:scale(1.05)}
+    #feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:1.2rem}
+    .card{background:var(--card);border-radius:12px;box-shadow:var(--shadow);overflow:hidden;position:relative;display:flex;flex-direction:column;min-height:380px}
+    .title{font-size:1.1rem;padding:1rem 1rem .4rem;color:var(--fg)}
+    .card img{width:100%;object-fit:cover;flex-shrink:0;height:200px;filter:brightness(1.15) contrast(1.25)}
+    ul.reasons{list-style:disc;padding:0 1.2rem;margin:1rem 0 2rem;font-size:.95rem}
+    ul.reasons li{margin:.2rem 0}
+    .time{position:absolute;bottom:10px;right:14px;font-size:.75rem;color:var(--fg)}
     /* toast */
-    #toast {
-      position:fixed; top:1rem; left:50%;
-      transform: translateX(-50%);
-      background: var(--btn); color: var(--bg);
-      padding:0.8rem 1.5rem; border-radius:5px;
-      opacity:0; pointer-events:none;
-    }
-    @keyframes showToast {
-      0%{opacity:0;} 10%{opacity:1;} 90%{opacity:1;} 100%{opacity:0;}
-    }
+    #toast{position:fixed;top:1rem;left:50%;transform:translateX(-50%);background:var(--fg);color:#000;padding:.8rem 1.5rem;border-radius:5px;opacity:0;pointer-events:none}
+    @keyframes show{0%{opacity:0}15%{opacity:1}85%{opacity:1}100%{opacity:0}}
   </style>
 </head>
 <body>
-  <canvas id="starfield"></canvas>
-  <h2>Smart‑Bin</h2>
+  <div id="gradientBG"></div>
+  <div id="starfield"><canvas id="sf1"></canvas></div>
+  <div id="starRain"></div>
+
+  <h1>Smart‑Bin</h1>
   <div id="controls">
-    <button id="shoot">📸 Take Picture</button>
-    <button id="clearMe">🗑️ Clear My History</button>
+    <button id="shoot">📸 Take Picture</button>
+    <button id="clearMe">🗑️ Clear My History</button>
   </div>
-  <div id="deck"></div>
+  <div id="feed">Loading…</div>
   <div id="toast">Captured!</div>
 
-  <script>
-  // ─── Starfield ───
-  (() => {
-    const c = document.createElement('canvas');
-    c.id = 'starfield'; document.body.prepend(c);
-    const ctx = c.getContext('2d');
-    function resize(){ c.width=innerWidth; c.height=innerHeight; }
-    window.addEventListener('resize',resize); resize();
-    const stars = Array.from({length:150},()=>({
-      x:Math.random()*c.width,
-      y:Math.random()*c.height,
-      r:Math.random()*1.5+0.5,
-      s:Math.random()*0.5+0.2
-    }));
-    (function anim(){
-      ctx.fillStyle='#000'; ctx.fillRect(0,0,c.width,c.height);
-      ctx.fillStyle='#0ff';
-      stars.forEach(st=>{ st.y+=st.s;
-        if(st.y>c.height){ st.y=0; st.x=Math.random()*c.width; }
-        ctx.beginPath(); ctx.arc(st.x,st.y,st.r,0,2*Math.PI); ctx.fill();
-      });
-      requestAnimationFrame(anim);
-    })();
+<script>
+/* starfield & rain identical to admin */
+(function(){
+  const c=document.getElementById('sf1'),ctx=c.getContext('2d');
+  function resize(){c.width=innerWidth;c.height=innerHeight}
+  addEventListener('resize',resize);resize();
+  const stars=[...Array(250)].map(()=>({x:Math.random()*c.width,y:Math.random()*c.height,r:Math.random()*1.2,s:0.5+Math.random()*0.8}));
+  (function anim(){
+    ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='#fff';
+    stars.forEach(s=>{s.y+=s.s;if(s.y>c.height)s.y=0;ctx.fillRect(s.x,s.y,s.r,s.r)});
+    requestAnimationFrame(anim);
   })();
+  setInterval(()=>{if(Math.random()<.7){const s=document.createElement('span');s.className='fall';s.textContent='✦';s.style.left=Math.random()*innerWidth+'px';document.getElementById('starRain').append(s);setTimeout(()=>s.remove(),4000)}},500);
+})();
 
-  // ─── State ───
-  let records = [];
-  const uid = localStorage.uid || crypto.randomUUID();
-  localStorage.uid = uid;
+/* UID + toast */
+const uid=localStorage.uid||crypto.randomUUID();localStorage.uid=uid;
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.animation='show 3s ease';setTimeout(()=>t.style.animation='none',3000)}
 
-  // ─── Toast ───
-  function showToast(msg){
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.style.animation = 'showToast 3s ease forwards';
-    setTimeout(()=> t.style.animation = 'none',3000);
-  }
+/* Build card */
+function makeCard(rec){
+  const [cat,obj]=rec.report.split(';').map(s=>s.trim());
+  return `
+  <div class="card">
+    <div class="title">${obj} – ${cat}</div>
+    <img src="data:image/jpeg;base64,${rec.b64}">
+    <ul class="reasons">
+      <li>${rec.report.split('\n')[1]||''}</li>
+      <li>${rec.report.split('\n')[2]||''}</li>
+    </ul>
+    <div class="time">${new Date(rec.ts).toLocaleString()}</div>
+  </div>`;
+}
 
-  // ─── Load & Render ───
-  async function loadData(){
-    const r = await fetch(`/api/records?uid=${uid}`);
-    records = await r.json();
-    renderDeck();
-  }
-  function renderDeck(){
-    const deck = document.getElementById('deck');
-    deck.innerHTML = '';
-    records.forEach((rec,i)=>{
-      const idx = records.length-1-i;
-      const el = document.createElement('div');
-      el.className='card';
-      el.style.zIndex = i;
-      const offset = i*8;
-      const scale = 1 - (records.length-1-i)*0.02;
-      el.style.transform = `translate(-50%,${offset}px) scale(${scale})`;
-      el.innerHTML = `
-        <img src="data:image/jpeg;base64,${rec.b64}" loading="lazy">
-        <div class="content">
-          <h3>${rec.report.split('\n')[0]}</h3>
-          <p><strong>Reason 1:</strong> ${rec.report.split('\n')[1]||''}</p>
-          <p><strong>Reason 2:</strong> ${rec.report.split('\n')[2]||''}</p>
-        </div>
-        <div class="time">${new Date(rec.ts).toLocaleString()}</div>
-      `;
-      el.addEventListener('click',()=>{
-        records.splice(i,1); records.push(rec);
-        renderDeck();
-      });
-      deck.appendChild(el);
-    });
-  }
+/* Load feed */
+async function load(){const r=await fetch('/api/records?uid='+uid);const data=await r.json();const feed=document.getElementById('feed');feed.innerHTML='';if(!data.length){feed.textContent='No history yet.';return;}data.forEach(rec=>feed.insertAdjacentHTML('beforeend',makeCard(rec)));}
+load();setInterval(load,5000);
 
-  // ─── Shoot ───
-  document.getElementById('shoot').onclick = async ()=>{
-    showToast('Capturing…');
-    await fetch(`/trigger?uid=${uid}`);
-    showToast('Captured!');
-  };
-
-  // ─── Clear mine ───
-  document.getElementById('clearMe').onclick = async ()=>{
-    if(!confirm('Delete your history?')) return;
-    await fetch(`/clear-user?uid=${uid}`,{ method:'POST' });
-    showToast('History cleared');
-    loadData();
-  };
-
-  // ─── Swipe ───
-  (()=>{
-    let sx=0;
-    const deck=document.getElementById('deck');
-    deck.addEventListener('touchstart',e=> sx=e.touches[0].clientX);
-    deck.addEventListener('touchend',e=>{
-      const dx=e.changedTouches[0].clientX-sx;
-      if(Math.abs(dx)>50){
-        if(dx<0) records.unshift(records.pop());
-        else     records.push(records.shift());
-        renderDeck();
-      }
-    });
-  })();
-
-  loadData();
-  setInterval(loadData,5000);
-  </script>
+/* Capture / clear */
+shoot.onclick=async()=>{toast('Capturing…');await fetch('/trigger?uid='+uid);toast('Captured!');};
+clearMe.onclick=async()=>{if(!confirm('Delete your history?'))return;await fetch('/clear-user?uid='+uid,{method:'POST'});load();toast('Cleared');};
+</script>
 </body>
 </html>
