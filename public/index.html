@@ -31,31 +31,23 @@ pre{white-space:pre-wrap;font-size:.9rem;line-height:1.35;color:var(--muted);mar
 
 <script>
 async function load(){
-  try{
-    const res = await fetch('/api/records');
-    const data = await res.json();
-    const feed = document.getElementById('feed');
-    feed.innerHTML = '';
-
-    if(!data.length){
-      feed.textContent = 'Waiting for uploads…';
-      return;
-    }
-    data.forEach(r=>{
-      const time = new Date(r.ts || Date.now()).toLocaleString();
-      feed.insertAdjacentHTML('beforeend',`
-        <div class="card">
-          <img loading="lazy" src="data:image/jpeg;base64,${r.b64}">
-          <div class="card-content">
-            <pre>${r.report.replace(/</g,'&lt;')}</pre>
-            <div class="time">${time}</div>
-          </div>
+  const res=await fetch('/api/records');
+  const data=await res.json();
+  const feed=document.getElementById('feed');
+  feed.innerHTML='';
+  if(!data.length){feed.textContent='Waiting for uploads…';return;}
+  data.forEach(r=>{
+    const t=new Date(r.ts||Date.now()).toLocaleString();
+    feed.insertAdjacentHTML('beforeend',`
+      <div class="card">
+        <img loading="lazy" src="data:image/jpeg;base64,${r.b64}">
+        <div class="card-content">
+          <pre>${r.report.replace(/</g,'&lt;')}</pre>
+          <div class="time">${t}</div>
         </div>
-      `);
-    });
-  }catch(e){console.error(e);}
+      </div>`);});
 }
-load(); setInterval(load, 5000);
+load(); setInterval(load,5000);
 </script>
 </body>
 </html>
