@@ -4,100 +4,187 @@
   <meta charset="utf-8">
   <title>Smart‑Bin Admin</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <style>
-    /* Background */
-    body { margin:0; padding:1rem; font-family:Arial,sans-serif; background:#111; color:#eee; }
-    /* Gradient & stars removed for brevity—assume same as before */
-    h1 { text-align:center; margin-bottom:1rem; }
-    #controls { text-align:center; margin-bottom:1rem; }
-    #clearAll { padding:.5rem 1rem; border:1px solid #eee; background:transparent; color:#eee; border-radius:4px; cursor:pointer; }
-    #clearAll:hover { background:rgba(255,255,255,.1); }
-    #feed { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:1rem; }
 
+  <style>
+    /* ───── Background ───── */
+    #gradientBG {
+      position:fixed; top:0; left:0; width:100%; height:100%;
+      background:linear-gradient(135deg,#ff0080,#ff8c00,#40c8ff,#ff40ff);
+      background-size:600% 600%; animation:swirl 15s ease infinite;
+      opacity:.6; z-index:-10000;
+    }
+    @keyframes swirl{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+    #starfield,#starRain {
+      position:fixed; top:0; left:0; width:100%; height:100%;
+      pointer-events:none; z-index:-9999;
+    }
+    canvas { position:absolute; width:100%; height:100%; }
+    .fall {
+      position:absolute; color:#fff; font-size:1rem;
+      animation:fall 4s linear infinite;
+    }
+    @keyframes fall{0%{transform:translateY(-20px);opacity:1}100%{transform:translateY(110vh);opacity:0}}
+
+    /* ───── Page Layout ───── */
+    body {
+      margin:0; padding:1rem;
+      font-family:Arial,sans-serif;
+      background:transparent; color:#fff;
+      overflow-x:hidden;
+    }
+    h1 {
+      text-align:center;
+      margin-bottom:1rem;
+      font-size:3rem;              /* <-- bigger title */
+      text-shadow:0 0 10px #fff;
+    }
+    #controls {
+      text-align:center; margin-bottom:1rem;
+    }
+    #clearAll {
+      padding:0.75rem 1.5rem;       /* <-- larger button */
+      font-size:1.1rem;             /* <-- larger text */
+      border:1px solid #fff;
+      background:rgba(255,255,255,0.1);
+      color:#fff;
+      border-radius:4px;
+      cursor:pointer;
+      transition:.3s;
+    }
+    #clearAll:hover {
+      background:rgba(255,255,255,0.3);
+    }
+
+    /* ───── Feed & Cards ───── */
+    #feed {
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+      gap:1rem;
+    }
     .card {
-      background:#222; border-radius:8px; overflow:hidden;
-      box-shadow:0 4px 12px rgba(0,0,0,.7); display:flex; flex-direction:column;
+      background:rgba(0,0,0,0.6);
+      border-radius:8px;
+      overflow:hidden;
+      box-shadow:0 4px 12px rgba(0,0,0,0.5);
+      display:flex; flex-direction:column;
       transition:transform .2s;
     }
     .card:hover { transform:scale(1.02); }
+    .card img { width:100%; height:auto; object-fit:cover; }
 
-    .card img {
-      width:100%; height:auto; object-fit:cover;
-    }
-    .item-list {
-      list-style:none; margin:0; padding:1rem;
-    }
-    .item-list li {
-      margin-bottom:.8rem;
+    .item-list { flex-grow:1; padding:1rem; }
+    .item {
+      margin-bottom:1rem;
     }
     .item-title {
-      font-size:1.1rem; font-weight:bold; color:#0ff;
+      font-family:'Orbitron',sans-serif;
+      font-size:1.2rem; font-weight:700;
+      color:#0ff; text-align:center;
+      margin-bottom:.25rem;
     }
-    .item-reason {
-      font-size:.9rem; font-style:italic; color:#ccc; margin-left:1rem;
+    .item-comment {
+      font-size:.9rem; color:#ddd;
+      margin-left:1rem; font-style:italic;
+      margin-bottom:.2rem;
     }
+
     .time {
-      text-align:right; font-size:.75rem; color:#999;
-      padding:.3rem 1rem 0.6rem;
+      text-align:right;
+      font-size:.75rem;
+      color:#ccc;
+      padding:.5rem 1rem .8rem;
     }
   </style>
 </head>
 <body>
+  <div id="gradientBG"></div>
+  <div id="starfield">
+    <canvas id="sf1"></canvas>
+    <canvas id="sf2"></canvas>
+    <canvas id="sf3"></canvas>
+    <canvas id="sf4"></canvas>
+  </div>
+  <div id="starRain"></div>
 
   <h1>Smart‑Bin Admin</h1>
   <div id="controls">
-    <button id="clearAll">🧹 Clear All History</button>
+    <button id="clearAll">🧹 Clear All History</button>
   </div>
   <div id="feed">Loading…</div>
 
   <script>
-    // Turn each record into one card with multiple items
-    function makeCard(rec) {
-      // Split blocks by blank line
+    // Starfield layers
+    ['sf1','sf2','sf3','sf4'].forEach((id,i)=>{
+      const c=document.getElementById(id),ctx=c.getContext('2d');
+      function resize(){c.width=innerWidth;c.height=innerHeight;}
+      window.addEventListener('resize',resize); resize();
+      const stars=[...Array(200+i*50)].map(()=>({
+        x:Math.random()*c.width,
+        y:Math.random()*c.height,
+        r:Math.random()*1.5,
+        s:0.3+i*0.3+Math.random()*0.4
+      }));
+      (function draw(){
+        ctx.clearRect(0,0,c.width,c.height);
+        ctx.fillStyle='#fff';
+        stars.forEach(s=>{
+          s.y+=s.s;
+          if(s.y>c.height) s.y=0;
+          ctx.fillRect(s.x,s.y,s.r,s.r);
+        });
+        requestAnimationFrame(draw);
+      })();
+    });
+    // Star rain
+    setInterval(()=>{
+      if(Math.random()<.6){
+        const sp=document.createElement('span');
+        sp.className='fall';
+        sp.textContent='✦';
+        sp.style.left=Math.random()*innerWidth+'px';
+        document.getElementById('starRain').append(sp);
+        setTimeout(()=>sp.remove(),4000);
+      }
+    },500);
+
+    // One card per photo
+    function makeCard(rec){
       const blocks = rec.report.trim().split(/\n\s*\n/);
-      // Build list items
-      const itemsHTML = blocks.map(block => {
-        const lines = block.split('\n').map(l => l.trim());
-        let [cat,obj] = lines[0].split(';').map(s=>s.trim());
-        const title = `${obj} – ${cat}`;
-        const r1 = lines[1]||'';
-        const r2 = lines[2]||'';
+      const itemsHTML = blocks.map(block=>{
+        const lines=block.split('\n').map(l=>l.trim());
+        let [cat,obj]=lines[0].split(';').map(s=>s.trim());
+        const title=`${obj} – ${cat}`;
+        const r1=lines[1]||'', r2=lines[2]||'';
         return `
-          <li>
+          <div class="item">
             <div class="item-title">${title}</div>
-            <div class="item-reason">• ${r1}</div>
-            <div class="item-reason">• ${r2}</div>
-          </li>`;
+            <div class="item-comment">• ${r1}</div>
+            <div class="item-comment">• ${r2}</div>
+          </div>`;
       }).join('');
-      const time = new Date(rec.ts).toLocaleString();
+      const time=new Date(rec.ts).toLocaleString();
       return `
         <div class="card">
           <img src="data:image/jpeg;base64,${rec.b64}">
-          <ul class="item-list">${itemsHTML}</ul>
+          <div class="item-list">${itemsHTML}</div>
           <div class="time">${time}</div>
         </div>`;
     }
 
-    async function loadFeed() {
-      const r = await fetch('/api/records');
-      const data = await r.json();
-      const feed = document.getElementById('feed');
-      feed.innerHTML = '';
-      if (!data.length) {
-        feed.textContent = 'No records yet.';
-        return;
-      }
-      data.forEach(rec => feed.insertAdjacentHTML('beforeend', makeCard(rec)));
+    async function loadFeed(){
+      const r=await fetch('/api/records'), data=await r.json();
+      const f=document.getElementById('feed');
+      f.innerHTML='';
+      if(!data.length){ f.textContent='No records.'; return; }
+      data.forEach(rec=> f.insertAdjacentHTML('beforeend',makeCard(rec)));
     }
+    loadFeed(); setInterval(loadFeed,5000);
 
-    document.getElementById('clearAll').onclick = async () => {
-      if (!confirm('Delete ALL history?')) return;
-      await fetch('/clear-all', { method: 'POST' });
+    document.getElementById('clearAll').onclick=async()=>{
+      if(!confirm('Delete EVERYTHING?')) return;
+      await fetch('/clear-all',{method:'POST'});
       loadFeed();
     };
-
-    loadFeed();
-    setInterval(loadFeed, 5000);
   </script>
 </body>
 </html>
